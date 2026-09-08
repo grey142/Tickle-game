@@ -6,10 +6,14 @@ const M1_WALLS = [
   { x: 0, y: 760, w: 1400, h: 40 },
   { x: 0, y: 0, w: 40, h: 800 },
   { x: 1360, y: 0, w: 40, h: 800 },
-  { x: 280, y: 160, w: 40, h: 220 },
-  { x: 520, y: 400, w: 200, h: 40 },
-  { x: 820, y: 120, w: 40, h: 280 },
-  { x: 1000, y: 480, w: 220, h: 40 },
+  // North stubs — leave a wide mid corridor (y ~340–460) open to the exit
+  { x: 280, y: 80, w: 40, h: 200 },
+  { x: 560, y: 80, w: 40, h: 180 },
+  { x: 880, y: 80, w: 40, h: 200 },
+  // South stubs
+  { x: 400, y: 520, w: 40, h: 200 },
+  { x: 720, y: 540, w: 200, h: 40 },
+  { x: 1040, y: 520, w: 40, h: 200 },
 ];
 
 function rectRoom(
@@ -138,21 +142,22 @@ const MISSION_1: LevelDef[] = [
     name: 'Mission 1-1 — Whisper Grove',
     width: 1400,
     height: 800,
-    playerStart: { x: 110, y: 400 },
-    exit: { x: 1280, y: 400 },
-    flavor: 'Two pest types. Grab → mash Struggle. Reach the exit shrine.',
+    playerStart: { x: 120, y: 400 },
+    // Keep exit clear of the right border wall (starts at x=1360)
+    exit: { x: 1260, y: 400 },
+    flavor: 'Two pest types. Grab → mash Struggle. Follow the open mid lane to the exit shrine.',
     walls: M1_WALLS,
     potions: [
-      { x: 360, y: 520, amount: 350 },
-      { x: 700, y: 220, amount: 300 },
+      { x: 360, y: 560, amount: 350 },
+      { x: 700, y: 200, amount: 300 },
       { x: 1100, y: 600, amount: 400 },
     ],
     enemies: [
-      { kind: 'giggle_slime', x: 420, y: 280 },
-      { kind: 'giggle_slime', x: 620, y: 520 },
-      { kind: 'tickle_imp', x: 780, y: 300 },
-      { kind: 'tickle_imp', x: 980, y: 480 },
-      { kind: 'giggle_slime', x: 1120, y: 260 },
+      { kind: 'giggle_slime', x: 420, y: 240 },
+      { kind: 'giggle_slime', x: 620, y: 560 },
+      { kind: 'tickle_imp', x: 780, y: 240 },
+      { kind: 'tickle_imp', x: 980, y: 560 },
+      { kind: 'giggle_slime', x: 1120, y: 240 },
     ],
   },
   {
@@ -169,12 +174,13 @@ const MISSION_1: LevelDef[] = [
       { x: 0, y: 810, w: 1500, h: 40 },
       { x: 0, y: 0, w: 40, h: 850 },
       { x: 1460, y: 0, w: 40, h: 850 },
-      { x: 300, y: 140, w: 40, h: 260 },
-      { x: 300, y: 480, w: 40, h: 240 },
-      { x: 560, y: 320, w: 220, h: 40 },
-      { x: 860, y: 120, w: 40, h: 280 },
-      { x: 860, y: 480, w: 40, h: 260 },
-      { x: 1100, y: 380, w: 200, h: 40 },
+      // Paired stubs with ~80px mid gaps so spawn→exit stays walkable
+      { x: 300, y: 120, w: 40, h: 240 },
+      { x: 300, y: 500, w: 40, h: 220 },
+      { x: 560, y: 280, w: 180, h: 40 },
+      { x: 860, y: 100, w: 40, h: 240 },
+      { x: 860, y: 520, w: 40, h: 220 },
+      { x: 1120, y: 560, w: 180, h: 40 },
     ],
     potions: [
       { x: 220, y: 200, amount: 300 },

@@ -58,6 +58,8 @@ export class Game {
     this.ui = ui;
     this.panel = panel;
     this.input = new Input(canvas);
+    this.canvas.tabIndex = 0;
+    this.canvas.addEventListener('pointerdown', () => this.canvas.focus());
     this.save = loadSave();
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -82,6 +84,14 @@ export class Game {
 
   get cheats(): Cheats { return this.save.cheats; }
 
+  /** Ensure keys reach the game after menu button clicks steal focus. */
+  private focusPlayfield() {
+    // Input listens on window already; blur active menu control and focus canvas.
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    this.canvas.focus({ preventScroll: true });
+  }
+
+
   showMainMenu() {
     this.mode = 'menu';
     this.menuScreen = 'main';
@@ -97,6 +107,7 @@ export class Game {
     this.mode = 'playing';
     this.ui.hide();
     this.panel.clearPreview();
+    this.focusPlayfield();
   }
 
   loadLevel() {
@@ -140,6 +151,7 @@ export class Game {
       case 'resume':
         this.mode = 'playing';
         this.ui.hide();
+        this.focusPlayfield();
         break;
       case 'pause':
         this.mode = 'paused';
@@ -203,6 +215,7 @@ export class Game {
         this.player.refillFull();
         this.mode = 'playing';
         this.ui.hide();
+        this.focusPlayfield();
         break;
       case 'next-level':
         if (this.level < 3) {

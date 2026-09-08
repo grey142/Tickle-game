@@ -2,15 +2,25 @@
 
 Adult fantasy 2D action game built with Vite + TypeScript + Canvas.
 
-## Run
+## Play
 
-npm install
+**Online (GitHub Pages):** https://grey142.github.io/Tickle-game/
+
+**Local:**
+
+```bash
+npm i
 npm run dev
+```
 
-Open http://localhost:5173
+Open http://localhost:5173 (Vite default dev server).
 
+```bash
 npm run build
 npm run preview
+```
+
+vite.config.ts sets `base: './'` so sprites and assets work on GitHub Pages.
 
 ## Controls
 
@@ -29,9 +39,18 @@ npm run preview
 - 10x3 missions; Mission 1 tuned; boss unlocks next
 - Cheats, Gallery, Save, Autosave
 
+## Deploy
+
+```bash
+npm run build
+npx gh-pages -d dist
+```
+
+Publishes `dist/` to the `gh-pages` branch.
+
 ## Architecture
 
-src/game entities systems data ui save
+src/game entities systems data ui save assets
 
 ## Cheats
 

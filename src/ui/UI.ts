@@ -2,6 +2,7 @@ import type { Cheats } from '../game/types';
 import { RESOLVE_MAX, STAMINA_MAX } from '../game/types';
 import { GALLERY_ORDER, MONSTER_DEFS } from '../data/MonsterDefs';
 import { MISSION_TITLES } from '../data/MissionData';
+import { publicAssetUrl } from '../assets/Sprites';
 
 export type MenuScreen = 'none' | 'main' | 'pause' | 'cheats' | 'gallery' | 'help' | 'gameover' | 'levelclear' | 'missionclear';
 
@@ -133,7 +134,7 @@ export class UI {
     const items = GALLERY_ORDER.map((id) => {
       const d = MONSTER_DEFS[id];
       return `<div class="gallery-item" data-act="gallery-preview" data-payload="${id}">
-        <img class="gallery-thumb" src="/sprites/enemy_${id}.png" alt="${d.name}" loading="lazy"/>
+        <img class="gallery-thumb" src="${publicAssetUrl(`sprites/enemy_${id}.png`)}" alt="${d.name}" loading="lazy"/>
         <div class="gallery-meta">
           <h3 style="color:${d.color}">${d.name}</h3>
           <p>${d.tier} · ${d.description}</p>

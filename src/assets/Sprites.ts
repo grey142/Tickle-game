@@ -28,23 +28,44 @@ const MONSTER_KINDS: MonsterKind[] = [
   'boss_merriwink',
 ];
 
+/** Resolve public asset URLs against Vite `base` (e.g. './' for Pages). */
+export function publicAssetUrl(path: string): string {
+  const base = import.meta.env.BASE_URL || './';
+  const clean = path.replace(/^\/+/, '');
+  return `${base}${clean}`;
+}
+
 export function enemySpriteUrl(kind: MonsterKind): string {
-  return `/sprites/enemy_${kind}.png`;
+  return publicAssetUrl(`sprites/enemy_${kind}.png`);
 }
 
 export function heroSheetUrl(): string {
-  return '/sprites/hero_sheet.png';
+  return publicAssetUrl('sprites/hero_sheet.png');
 }
 
 export function heroFrameIndex(state: CharAnimState): number {
   return HERO_ANIM_FRAME[state] ?? 0;
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+const SPRITE_LOAD_TIMEOUT_MS = 8000;
+
+function loadImage(src: string, timeoutMs = SPRITE_LOAD_TIMEOUT_MS): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(`Failed to load sprite: ${src}`));
+    const timer = window.setTimeout(() => {
+      img.onload = null;
+      img.onerror = null;
+      img.src = '';
+      reject(new Error(`Timed out loading sprite: ${src}`));
+    }, timeoutMs);
+    img.onload = () => {
+      window.clearTimeout(timer);
+      resolve(img);
+    };
+    img.onerror = () => {
+      window.clearTimeout(timer);
+      reject(new Error(`Failed to load sprite: ${src}`));
+    };
     img.src = src;
   });
 }
@@ -159,40 +180,59 @@ let loadPromise: Promise<SpriteBank> | null = null;
 export function loadSprites(): Promise<SpriteBank> {
   if (loadPromise) return loadPromise;
   loadPromise = (async () => {
-    try {
-      const heroImg = await loadImage(heroSheetUrl());
-      const keyedHero = chromaKeyToCanvas(
-        heroImg,
-        heroImg.naturalWidth || heroImg.width,
-        heroImg.naturalHeight || heroImg.height,
-      );
-      sprites.heroFrames = [];
-      for (let i = 0; i < HERO_FRAME_COUNT; i++) {
-        sprites.heroFrames.push(trimTransparent(sliceFrame(keyedHero, i, HERO_FRAME_COUNT)));
-      }
+    const overall = (async () => {
+      try {
+        const heroImg = await loadImage(heroSheetUrl());
+        const keyedHero = chromaKeyToCanvas(
+          heroImg,
+          heroImg.naturalWidth || heroImg.width,
+          heroImg.naturalHeight || heroImg.height,
+        );
+        sprites.heroFrames = [];
+        for (let i = 0; i < HERO_FRAME_COUNT; i++) {
+          sprites.heroFrames.push(trimTransparent(sliceFrame(keyedHero, i, HERO_FRAME_COUNT)));
+        }
 
-      const enemyResults = await Promise.all(
-        MONSTER_KINDS.map(async (kind) => {
-          const img = await loadImage(enemySpriteUrl(kind));
-          const keyed = trimTransparent(chromaKeyToCanvas(
-            img,
-            img.naturalWidth || img.width,
-            img.naturalHeight || img.height,
-          ));
-          return { kind, keyed };
-        }),
-      );
-      for (const { kind, keyed } of enemyResults) {
-        sprites.enemies[kind] = keyed;
-      }
+        const enemyResults = await Promise.allSettled(
+          MONSTER_KINDS.map(async (kind) => {
+            const img = await loadImage(enemySpriteUrl(kind));
+            const keyed = trimTransparent(chromaKeyToCanvas(
+              img,
+              img.naturalWidth || img.width,
+              img.naturalHeight || img.height,
+            ));
+            return { kind, keyed };
+          }),
+        );
+        for (const result of enemyResults) {
+          if (result.status === 'fulfilled') {
+            sprites.enemies[result.value.kind] = result.value.keyed;
+          } else {
+            console.warn('Enemy sprite skipped:', result.reason);
+          }
+        }
 
-      sprites.ready = true;
-    } catch (err) {
-      console.warn('Sprite load failed; procedural fallbacks will be used.', err);
-      sprites.ready = false;
-    }
-    return sprites;
+        sprites.ready = sprites.heroFrames.length > 0;
+      } catch (err) {
+        console.warn('Sprite load failed; procedural fallbacks will be used.', err);
+        sprites.ready = false;
+      }
+      return sprites;
+    })();
+
+    const timeout = new Promise<SpriteBank>((resolve) => {
+      window.setTimeout(() => {
+        if (!sprites.ready) {
+          console.warn(`Sprite load exceeded ${SPRITE_LOAD_TIMEOUT_MS}ms; continuing with fallbacks.`);
+          sprites.ready = sprites.heroFrames.length > 0;
+        }
+        resolve(sprites);
+      }, SPRITE_LOAD_TIMEOUT_MS);
+    });
+
+    return Promise.race([overall, timeout]);
   })();
+
   return loadPromise;
 }
 
