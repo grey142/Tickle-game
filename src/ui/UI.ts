@@ -143,10 +143,13 @@ export class UI {
     }).join('');
     this.menuCard.innerHTML = `
       <h1>Enemy Gallery</h1>
-      <p>Click an enemy to preview tickle &amp; defeat animations on the side panel.</p>
+      <p>Click an enemy to preview tickle scenes on the side panel (gang types support ×1–3).</p>
       <div class="gallery-grid">${items}</div>
       <div class="btn-row">
         <button class="menu-btn" data-act="gallery-tickle">Preview Tickle</button>
+        <button class="menu-btn secondary" data-act="gallery-tickle-count" data-payload="1">×1</button>
+        <button class="menu-btn secondary" data-act="gallery-tickle-count" data-payload="2">×2</button>
+        <button class="menu-btn secondary" data-act="gallery-tickle-count" data-payload="3">×3</button>
         <button class="menu-btn secondary" data-act="gallery-gameover">Preview Defeat</button>
         <button class="menu-btn secondary" data-act="back-main">Back</button>
       </div>

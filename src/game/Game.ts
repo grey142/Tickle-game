@@ -126,6 +126,7 @@ export class Game {
     this.projectiles = [];
     this.slashFx = [];
     this.struggle.clear(this.player);
+    this.panel.clearTickle();
     this.gameOverEnemy = null;
     this.gameOverDelay = 0;
     this.exitOpen = true;
@@ -198,13 +199,18 @@ export class Game {
       case 'gallery-preview':
         if (payload) {
           this.gallerySelected = payload as MonsterKind;
-          this.panel.startPreview(this.gallerySelected, 'tickle');
+          this.panel.startPreview(this.gallerySelected, 'tickle', 1);
           this.ui.toast(MONSTER_DEFS[this.gallerySelected].name);
         }
         break;
       case 'gallery-tickle':
-        this.panel.startPreview(this.gallerySelected, 'tickle');
+        this.panel.startPreview(this.gallerySelected, 'tickle', 1);
         break;
+      case 'gallery-tickle-count': {
+        const n = Math.max(1, Math.min(3, Number(payload) || 1));
+        this.panel.startPreview(this.gallerySelected, 'tickle', n);
+        break;
+      }
       case 'gallery-gameover':
         this.panel.startPreview(this.gallerySelected, 'gameOver');
         break;
@@ -273,7 +279,15 @@ export class Game {
 
     if (this.struggle.active) {
       const result = this.struggle.update(dt, this.player, this.input, this.cheats);
-      if (result === 'escaped') this.ui.toast('Escaped!');
+      if (this.struggle.active && this.struggle.grabbers.length) {
+        const pk = this.struggle.grabbers[0].kind;
+        this.panel.setTickle(pk, this.struggle.grabbers.length);
+        this.panel.setState(this.player.anim, this.gameOverEnemy);
+      }
+      if (result === 'escaped') {
+        this.panel.clearTickle();
+        this.ui.toast('Escaped!');
+      }
       if (result === 'drained') this.triggerGameOver();
     } else {
       const actions = this.player.update(dt, this.input, this.walls, this.cheats, worldMouse, true);
@@ -305,28 +319,33 @@ export class Game {
       }
     }
 
-    // initiate grab: gather nearby grabbers
+    // initiate grab: gather nearby grabbers (same kind as first only)
     if (canGrab && !this.struggle.active) {
-      const grabbers = this.monsters.filter(
+      const rawGrabbers = this.monsters.filter(
         (m) => !m.dead && m.state === 'grabbing' && circlesOverlap(m.x, m.y, m.radius + 6, this.player.x, this.player.y, this.player.radius + 4),
       );
-      if (grabbers.length) {
+      if (rawGrabbers.length) {
+        // Initial filter: only same kind as the first grabber
+        const primaryKind = rawGrabbers[0].kind;
+        const grabbers = rawGrabbers.filter((m) => m.kind === primaryKind);
         // respect gang max of primary
         const primary = grabbers[0];
         const maxG = primary.def.gangMax;
         const gang = grabbers.slice(0, maxG);
-        // pull nearby same-interested chasers into gang if L1/L2
+        // Only same monster type may join a gang tickle (reinforce)
         if (maxG > 1) {
           for (const m of this.monsters) {
             if (gang.length >= maxG) break;
             if (m.dead || gang.includes(m)) continue;
-            if (m.def.gangMax > 1 && Math.hypot(m.x - this.player.x, m.y - this.player.y) < 90) {
+            if (m.kind !== primaryKind) continue;
+            if (Math.hypot(m.x - this.player.x, m.y - this.player.y) < 100) {
               m.state = 'grabbing';
               gang.push(m);
             }
           }
         }
         this.struggle.begin(gang, this.player);
+        this.panel.setTickle(primaryKind, gang.length);
       }
     }
 
@@ -394,6 +413,14 @@ export class Game {
     this.camera.x = Math.max(0, Math.min(this.mapW - viewW, this.player.x - viewW / 2));
     this.camera.y = Math.max(0, Math.min(this.mapH - viewH, this.player.y - viewH / 2));
 
+    if (this.struggle.active && this.struggle.grabbers.length) {
+      this.panel.setTickle(this.struggle.grabbers[0].kind, this.struggle.grabbers.length);
+    } else if (this.panel.preview === 'none') {
+      // keep gallery preview tickle; clear in-game scene when free
+      if (this.player.anim !== 'grabbed' && this.player.anim !== 'tickled') {
+        this.panel.clearTickle();
+      }
+    }
     this.panel.setState(this.player.anim, this.gameOverEnemy);
     this.ui.updateBars(this.player.resolve, this.player.stamina, this.struggle.active, this.struggle.struggle);
 
@@ -440,6 +467,7 @@ export class Game {
     this.player.anim = 'gameOver';
     this.panel.setState('gameOver', this.gameOverEnemy);
     this.struggle.clear(this.player);
+    this.panel.clearTickle();
     this.player.dead = true;
   }
 

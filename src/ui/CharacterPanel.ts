@@ -1,6 +1,12 @@
 import type { CharAnimState, MonsterKind } from '../game/types';
 import { MONSTER_DEFS } from '../data/MonsterDefs';
-import { drawSpriteCentered, getEnemySprite, getHeroFrame } from '../assets/Sprites';
+import {
+  drawSpriteCentered,
+  getEnemySprite,
+  getHeroFrame,
+  getTickleScene,
+  TICKLE_SCENE_MAX,
+} from '../assets/Sprites';
 
 export class CharacterPanel {
   canvas: HTMLCanvasElement;
@@ -11,6 +17,9 @@ export class CharacterPanel {
   /** gallery preview mode */
   preview: 'none' | 'tickle' | 'gameOver' = 'none';
   previewKind: MonsterKind | null = null;
+  /** Active tickle scene (in-game struggle or gallery tickle preview). */
+  tickleKind: MonsterKind | null = null;
+  tickleCount = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -31,15 +40,32 @@ export class CharacterPanel {
     if (state === 'gameOver') this.gameOverEnemy = enemy ?? this.gameOverEnemy;
   }
 
-  startPreview(kind: MonsterKind, mode: 'tickle' | 'gameOver') {
+  setTickle(kind: MonsterKind, count: number) {
+    this.tickleKind = kind;
+    const maxN = TICKLE_SCENE_MAX[kind] ?? 1;
+    this.tickleCount = Math.max(1, Math.min(maxN, Math.floor(count) || 1));
+  }
+
+  clearTickle() {
+    this.tickleKind = null;
+    this.tickleCount = 1;
+  }
+
+  startPreview(kind: MonsterKind, mode: 'tickle' | 'gameOver', count = 1) {
     this.preview = mode;
     this.previewKind = kind;
     this.t = 0;
+    if (mode === 'tickle') {
+      this.setTickle(kind, count);
+    } else {
+      this.clearTickle();
+    }
   }
 
   clearPreview() {
     this.preview = 'none';
     this.previewKind = null;
+    this.clearTickle();
   }
 
   update(dt: number) {
@@ -59,14 +85,24 @@ export class CharacterPanel {
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, w, h);
 
-    const state = this.preview === 'tickle' ? 'tickled' : this.preview === 'gameOver' ? 'gameOver' : this.state;
+    const state =
+      this.preview === 'tickle' ? 'tickled' : this.preview === 'gameOver' ? 'gameOver' : this.state;
     const enemy = this.preview !== 'none' ? this.previewKind : this.gameOverEnemy;
 
-    this.drawHero(w / 2, h * 0.62, state, h);
+    const showTickleScene =
+      (state === 'grabbed' || state === 'tickled' || this.preview === 'tickle') &&
+      this.tickleKind != null;
 
-    if (state === 'grabbed' || state === 'tickled') {
-      this.drawGrabberSilhouette(w / 2 + 40, h * 0.58, enemy);
+    if (showTickleScene && this.tickleKind) {
+      this.drawTickleScene(w, h, this.tickleKind, this.tickleCount, state === 'tickled' || this.preview === 'tickle');
+    } else {
+      this.drawHero(w / 2, h * 0.62, state, h);
+
+      if (state === 'grabbed' || state === 'tickled') {
+        this.drawGrabberSilhouette(w / 2 + 40, h * 0.58, enemy);
+      }
     }
+
     if (state === 'gameOver' && enemy) {
       this.drawVictoryCreature(w / 2, h * 0.45, enemy);
       ctx.fillStyle = 'rgba(255,220,240,0.9)';
@@ -81,8 +117,53 @@ export class CharacterPanel {
       ctx.textAlign = 'center';
       ctx.fillText(MONSTER_DEFS[this.previewKind].name, w / 2, 28);
       ctx.fillStyle = '#9a88b8';
-      ctx.fillText(this.preview === 'tickle' ? 'Tickle preview' : 'Defeat preview', w / 2, 46);
+      const label =
+        this.preview === 'tickle'
+          ? `Tickle preview ×${this.tickleCount}`
+          : 'Defeat preview';
+      ctx.fillText(label, w / 2, 46);
     }
+  }
+
+  /** Draw full tickle scene filling most of the panel. */
+  private drawTickleScene(
+    w: number,
+    h: number,
+    kind: MonsterKind,
+    count: number,
+    tickling: boolean,
+  ) {
+    const ctx = this.ctx;
+    const scene = getTickleScene(kind, count);
+    ctx.save();
+    const bob = Math.sin(this.t * (tickling ? 10 : 3)) * (tickling ? 3 : 1.5);
+    const wobble = tickling ? Math.sin(this.t * 14) * 0.012 : 0;
+    ctx.translate(w / 2, h * 0.52 + bob);
+    ctx.rotate(wobble);
+
+    if (scene) {
+      const maxW = w * 0.92;
+      const maxH = h * 0.82;
+      const scale = Math.min(maxW / scene.width, maxH / scene.height);
+      const dw = scene.width * scale;
+      const dh = scene.height * scale;
+      ctx.drawImage(scene, -dw / 2, -dh / 2, dw, dh);
+    } else {
+      // fallback: hero + silhouette if scene not loaded
+      this.drawHero(0, h * 0.1, tickling ? 'tickled' : 'grabbed', h);
+      this.drawGrabberSilhouette(40, 0, kind);
+    }
+
+    if (tickling) {
+      for (let i = 0; i < 8; i++) {
+        const a = this.t * 5 + i;
+        ctx.fillStyle = `hsla(${50 + i * 20}, 90%, 70%, 0.75)`;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * (w * 0.28), Math.sin(a * 1.3) * (h * 0.22), 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   private drawHero(x: number, y: number, state: CharAnimState, panelH: number) {

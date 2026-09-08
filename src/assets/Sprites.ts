@@ -28,6 +28,24 @@ const MONSTER_KINDS: MonsterKind[] = [
   'boss_merriwink',
 ];
 
+/** Gang types have scenes 1–3; solo/boss have only _1. */
+export const TICKLE_SCENE_MAX: Record<MonsterKind, number> = {
+  giggle_slime: 3,
+  tickle_imp: 3,
+  feather_wisp: 3,
+  chuckle_brute: 3,
+  snicker_shade: 1,
+  root_trapper: 1,
+  hand_tickler: 1,
+  boss_titania: 1,
+  boss_guffaw: 1,
+  boss_merriwink: 1,
+};
+
+export function tickleSceneUrl(kind: MonsterKind, n: number): string {
+  return publicAssetUrl(`sprites/scenes/tickle_${kind}_${n}.png`);
+}
+
 /** Resolve public asset URLs against Vite `base` (e.g. './' for Pages). */
 export function publicAssetUrl(path: string): string {
   const base = import.meta.env.BASE_URL || './';
@@ -163,12 +181,15 @@ export interface SpriteBank {
   ready: boolean;
   heroFrames: HTMLCanvasElement[];
   enemies: Partial<Record<MonsterKind, HTMLCanvasElement>>;
+  /** Indexed 0 unused; scenes[kind][n] for n=1..max */
+  tickleScenes: Partial<Record<MonsterKind, (HTMLCanvasElement | undefined)[]>>;
 }
 
 export const sprites: SpriteBank = {
   ready: false,
   heroFrames: [],
   enemies: {},
+  tickleScenes: {},
 };
 
 let loadPromise: Promise<SpriteBank> | null = null;
@@ -212,6 +233,34 @@ export function loadSprites(): Promise<SpriteBank> {
           }
         }
 
+        const sceneJobs: Promise<void>[] = [];
+        for (const kind of MONSTER_KINDS) {
+          const maxN = TICKLE_SCENE_MAX[kind];
+          const slots: (HTMLCanvasElement | undefined)[] = [];
+          sprites.tickleScenes[kind] = slots;
+          for (let n = 1; n <= maxN; n++) {
+            const sceneN = n;
+            sceneJobs.push(
+              (async () => {
+                try {
+                  const img = await loadImage(tickleSceneUrl(kind, sceneN));
+                  const keyed = trimTransparent(
+                    chromaKeyToCanvas(
+                      img,
+                      img.naturalWidth || img.width,
+                      img.naturalHeight || img.height,
+                    ),
+                  );
+                  slots[sceneN] = keyed;
+                } catch (err) {
+                  console.warn(`Tickle scene skipped: ${kind}_${sceneN}`, err);
+                }
+              })(),
+            );
+          }
+        }
+        await Promise.allSettled(sceneJobs);
+
         sprites.ready = sprites.heroFrames.length > 0;
       } catch (err) {
         console.warn('Sprite load failed; procedural fallbacks will be used.', err);
@@ -244,6 +293,18 @@ export function getHeroFrame(state: CharAnimState): HTMLCanvasElement | null {
 
 export function getEnemySprite(kind: MonsterKind): HTMLCanvasElement | null {
   return sprites.enemies[kind] ?? null;
+}
+
+/**
+ * Return chroma-keyed tickle scene for kind + grabber count.
+ * Clamps to available frames (solo/boss → always 1; gang → min(count, 3)).
+ */
+export function getTickleScene(kind: MonsterKind, count: number): HTMLCanvasElement | null {
+  const maxN = TICKLE_SCENE_MAX[kind] ?? 1;
+  const n = Math.max(1, Math.min(maxN, Math.floor(count) || 1));
+  const slots = sprites.tickleScenes[kind];
+  if (!slots) return null;
+  return slots[n] ?? slots[1] ?? null;
 }
 
 /** Draw a chroma-keyed canvas centered at (cx, cy) with target height. */
