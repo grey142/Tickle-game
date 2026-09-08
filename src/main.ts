@@ -2,9 +2,11 @@ import './style.css';
 import { Game } from './game/Game';
 import { UI } from './ui/UI';
 import { CharacterPanel } from './ui/CharacterPanel';
+import { loadSprites } from './assets/Sprites';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
+  <div id="spriteLoading">Loading sprites…</div>
   <div class="game-shell">
     <div id="playfield-wrap">
       <div id="floatingHelp">
@@ -41,9 +43,17 @@ app.innerHTML = `
   </div>
 `;
 
+async function boot() {
+  const loading = document.querySelector<HTMLElement>('#spriteLoading');
+  // Load sprites before play; procedural fallbacks remain if this fails.
+  await loadSprites();
+  loading?.classList.add('hidden');
 
-const canvas = document.querySelector<HTMLCanvasElement>('#gameCanvas')!;
-const charCanvas = document.querySelector<HTMLCanvasElement>('#charCanvas')!;
-const ui = new UI(app);
-const panel = new CharacterPanel(charCanvas);
-new Game(canvas, ui, panel);
+  const canvas = document.querySelector<HTMLCanvasElement>('#gameCanvas')!;
+  const charCanvas = document.querySelector<HTMLCanvasElement>('#charCanvas')!;
+  const ui = new UI(app);
+  const panel = new CharacterPanel(charCanvas);
+  new Game(canvas, ui, panel);
+}
+
+void boot();

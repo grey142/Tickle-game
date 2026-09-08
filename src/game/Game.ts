@@ -14,6 +14,7 @@ import { loadSave, writeSave } from '../save/Save';
 import type { SaveData } from './types';
 import { CharacterPanel } from '../ui/CharacterPanel';
 import { UI, type MenuScreen } from '../ui/UI';
+import { drawSpriteCentered, getHeroFrame } from '../assets/Sprites';
 
 interface PotionEnt { x: number; y: number; amount: number; taken: boolean }
 interface SlashFx { x: number; y: number; angle: number; life: number }
@@ -588,20 +589,24 @@ export class Game {
     if (p.isDashing) {
       ctx.strokeStyle = 'rgba(140,200,255,0.5)';
       ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0, 0, p.radius + 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, p.radius + 10, 0, Math.PI * 2); ctx.stroke();
     }
-    // body
-    ctx.fillStyle = '#6a5a9a';
-    ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#c4b08a';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    // facing
-    ctx.rotate(p.facing);
-    ctx.fillStyle = '#e8c8a8';
-    ctx.beginPath(); ctx.arc(6, 0, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#eef';
-    ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(22, 0); ctx.stroke();
+    const frame = getHeroFrame(p.anim);
+    if (frame) {
+      const flip = Math.cos(p.facing) < 0;
+      drawSpriteCentered(ctx, frame, 0, -4, p.radius * 3.6, flip);
+    } else {
+      ctx.fillStyle = '#6a5a9a';
+      ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#c4b08a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.rotate(p.facing);
+      ctx.fillStyle = '#e8c8a8';
+      ctx.beginPath(); ctx.arc(6, 0, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#eef';
+      ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(22, 0); ctx.stroke();
+    }
     ctx.restore();
   }
 

@@ -1,6 +1,7 @@
 import type { MonsterDef, MonsterKind } from '../game/types';
 import { MONSTER_DEFS, bossHpForMission } from '../data/MonsterDefs';
 import { resolveWalls, circlesOverlap } from '../systems/Collision';
+import { drawSpriteCentered, getEnemySprite } from '../assets/Sprites';
 import type { Player } from './Player';
 
 export type MonsterState = 'idle' | 'chase' | 'grabbing' | 'tickling' | 'hitstun' | 'telegraph' | 'dead';
@@ -154,9 +155,9 @@ export class Monster {
   draw(ctx: CanvasRenderingContext2D) {
     if (this.dead) return;
     const { color, accent, shape } = this.def;
+    const sprite = getEnemySprite(this.kind);
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.rotate(this.facing * 0.15);
     if (this.flash > 0) ctx.globalAlpha = 0.55 + Math.sin(this.flash * 40) * 0.45;
 
     const bob = Math.sin(this.animT * 4) * 2;
@@ -175,17 +176,24 @@ export class Monster {
       ctx.fill();
     }
 
-    drawShape(ctx, shape, this.radius, color, accent, this.animT, this.state);
+    if (sprite) {
+      const flipX = Math.cos(this.facing) < 0;
+      drawSpriteCentered(ctx, sprite, 0, 0, this.radius * 2.4, flipX);
+    } else {
+      ctx.rotate(this.facing * 0.15);
+      drawShape(ctx, shape, this.radius, color, accent, this.animT, this.state);
+    }
     ctx.restore();
 
     // HP pip for multi-HP
     if (this.def.hp > 1 || this.isBoss) {
       const maxHp = this.isBoss ? bossHpForMission(this.mission) : this.def.hp;
       const ratio = Math.max(0, this.hp / maxHp);
+      const barY = this.y - (sprite ? this.radius * 1.3 : this.radius) - 12;
       ctx.fillStyle = '#220';
-      ctx.fillRect(this.x - 18, this.y - this.radius - 12, 36, 5);
+      ctx.fillRect(this.x - 18, barY, 36, 5);
       ctx.fillStyle = this.isBoss ? '#e85' : '#6c6';
-      ctx.fillRect(this.x - 18, this.y - this.radius - 12, 36 * ratio, 5);
+      ctx.fillRect(this.x - 18, barY, 36 * ratio, 5);
     }
   }
 }

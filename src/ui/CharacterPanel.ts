@@ -1,5 +1,6 @@
 import type { CharAnimState, MonsterKind } from '../game/types';
 import { MONSTER_DEFS } from '../data/MonsterDefs';
+import { drawSpriteCentered, getEnemySprite, getHeroFrame } from '../assets/Sprites';
 
 export class CharacterPanel {
   canvas: HTMLCanvasElement;
@@ -61,7 +62,7 @@ export class CharacterPanel {
     const state = this.preview === 'tickle' ? 'tickled' : this.preview === 'gameOver' ? 'gameOver' : this.state;
     const enemy = this.preview !== 'none' ? this.previewKind : this.gameOverEnemy;
 
-    this.drawHero(w / 2, h * 0.62, state);
+    this.drawHero(w / 2, h * 0.62, state, h);
 
     if (state === 'grabbed' || state === 'tickled') {
       this.drawGrabberSilhouette(w / 2 + 40, h * 0.58, enemy);
@@ -84,7 +85,7 @@ export class CharacterPanel {
     }
   }
 
-  private drawHero(x: number, y: number, state: CharAnimState) {
+  private drawHero(x: number, y: number, state: CharAnimState, panelH: number) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(x, y);
@@ -104,7 +105,29 @@ export class CharacterPanel {
       ctx.globalAlpha = 0.7 + Math.sin(this.t * 4) * 0.2;
     }
 
-    // adult adventurer — cloak + armor silhouette
+    const frame = getHeroFrame(state);
+    if (frame) {
+      const targetH = Math.min(panelH * 0.78, 220);
+      drawSpriteCentered(ctx, frame, 0, -8, targetH, false);
+      if (state === 'tickled') {
+        for (let i = 0; i < 6; i++) {
+          const a = this.t * 5 + i;
+          ctx.fillStyle = `hsla(${50 + i * 20}, 90%, 70%, 0.8)`;
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * 36, -20 + Math.sin(a * 1.3) * 24, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+      return;
+    }
+
+    // procedural stick-figure fallback
+    this.drawProceduralHero(ctx, state);
+    ctx.restore();
+  }
+
+  private drawProceduralHero(ctx: CanvasRenderingContext2D, state: CharAnimState) {
     // legs
     ctx.fillStyle = '#3a2a55';
     const legSwing = state === 'run' ? Math.sin(this.t * 12) * 8 : state === 'slash' ? 4 : 0;
@@ -145,12 +168,10 @@ export class CharacterPanel {
     // eyes
     ctx.fillStyle = '#222';
     if (state === 'tickled' || state === 'gameOver') {
-      // squint/laugh
       ctx.strokeStyle = '#222';
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(-5, -32, 3, 0.2, Math.PI - 0.2); ctx.stroke();
       ctx.beginPath(); ctx.arc(5, -32, 3, 0.2, Math.PI - 0.2); ctx.stroke();
-      // open mouth
       ctx.fillStyle = '#822';
       ctx.beginPath(); ctx.ellipse(0, -24, 4, 3 + Math.abs(Math.sin(this.t * 10)), 0, 0, Math.PI * 2); ctx.fill();
     } else {
@@ -169,13 +190,11 @@ export class CharacterPanel {
     ctx.translate(14, -5);
     ctx.rotate(armAngle);
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(22, 0); ctx.stroke();
-    // blade
     ctx.strokeStyle = '#ddeeff';
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(22, 0); ctx.lineTo(48, -6); ctx.stroke();
     ctx.restore();
 
-    // sparkles when tickled
     if (state === 'tickled') {
       for (let i = 0; i < 6; i++) {
         const a = this.t * 5 + i;
@@ -185,28 +204,30 @@ export class CharacterPanel {
         ctx.fill();
       }
     }
-
-    ctx.restore();
   }
 
   private drawGrabberSilhouette(x: number, y: number, kind: MonsterKind | null) {
     const ctx = this.ctx;
     const def = kind ? MONSTER_DEFS[kind] : MONSTER_DEFS.giggle_slime;
+    const sprite = kind ? getEnemySprite(kind) : null;
     ctx.save();
     ctx.translate(x, y);
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = def.color;
-    ctx.beginPath();
-    ctx.arc(0, 0, 22, 0, Math.PI * 2);
-    ctx.fill();
-    // wiggling fingers
-    ctx.strokeStyle = def.accent;
-    ctx.lineWidth = 3;
-    for (let i = 0; i < 4; i++) {
+    ctx.globalAlpha = 0.9;
+    if (sprite) {
+      drawSpriteCentered(ctx, sprite, 0, 0, 56, false);
+    } else {
+      ctx.fillStyle = def.color;
       ctx.beginPath();
-      ctx.moveTo(-20, -5 + i * 5);
-      ctx.quadraticCurveTo(-35, -5 + i * 5 + Math.sin(this.t * 16 + i) * 5, -48, -8 + i * 6);
-      ctx.stroke();
+      ctx.arc(0, 0, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = def.accent;
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-20, -5 + i * 5);
+        ctx.quadraticCurveTo(-35, -5 + i * 5 + Math.sin(this.t * 16 + i) * 5, -48, -8 + i * 6);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -214,22 +235,26 @@ export class CharacterPanel {
   private drawVictoryCreature(x: number, y: number, kind: MonsterKind) {
     const ctx = this.ctx;
     const def = MONSTER_DEFS[kind];
+    const sprite = getEnemySprite(kind);
     ctx.save();
     ctx.translate(x, y + Math.sin(this.t * 3) * 4);
-    ctx.fillStyle = def.color;
-    ctx.strokeStyle = def.accent;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(0, 0, 40, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // triumphant pose
-    ctx.fillStyle = '#222';
-    ctx.beginPath(); ctx.arc(-12, -8, 5, 0, Math.PI * 2); ctx.arc(12, -8, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = '28px serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('✧', 0, 12);
+    if (sprite) {
+      drawSpriteCentered(ctx, sprite, 0, 0, 96, false);
+    } else {
+      ctx.fillStyle = def.color;
+      ctx.strokeStyle = def.accent;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 40, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#222';
+      ctx.beginPath(); ctx.arc(-12, -8, 5, 0, Math.PI * 2); ctx.arc(12, -8, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = '28px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('✧', 0, 12);
+    }
     ctx.restore();
   }
 }

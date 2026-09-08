@@ -133,8 +133,11 @@ export class UI {
     const items = GALLERY_ORDER.map((id) => {
       const d = MONSTER_DEFS[id];
       return `<div class="gallery-item" data-act="gallery-preview" data-payload="${id}">
-        <h3 style="color:${d.color}">${d.name}</h3>
-        <p>${d.tier} · ${d.description}</p>
+        <img class="gallery-thumb" src="/sprites/enemy_${id}.png" alt="${d.name}" loading="lazy"/>
+        <div class="gallery-meta">
+          <h3 style="color:${d.color}">${d.name}</h3>
+          <p>${d.tier} · ${d.description}</p>
+        </div>
       </div>`;
     }).join('');
     this.menuCard.innerHTML = `

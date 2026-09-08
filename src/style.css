@@ -96,3 +96,19 @@ button.menu-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .gallery-item:hover { border-color: #a07ae0; }
 .gallery-item h3 { font-size: 13px; margin-bottom: 4px; color: #eee; }
 .gallery-item p { font-size: 11px; color: #9a88b8; margin: 0; }
+
+.gallery-item {
+  display: flex; gap: 10px; align-items: center;
+}
+.gallery-thumb {
+  width: 56px; height: 56px; object-fit: contain; flex-shrink: 0;
+  border-radius: 8px; background: #2a1f40; border: 1px solid #554070;
+}
+.gallery-meta { min-width: 0; }
+.gallery-meta h3 { font-size: 13px; margin-bottom: 4px; color: #eee; }
+.gallery-meta p { font-size: 11px; color: #9a88b8; margin: 0; }
+#spriteLoading {
+  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
+  background: #140e22; color: #d8c8f0; font: 600 16px Segoe UI, sans-serif;
+}
+#spriteLoading.hidden { display: none; }
