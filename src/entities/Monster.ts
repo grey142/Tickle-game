@@ -12,7 +12,7 @@ export class Monster {
   y: number;
   hp: number;
   radius: number;
-  state: MonsterState = 'chase';
+  state: MonsterState = 'idle';
   facing = 0;
   grabTimer = 0;
   tickleTime = 0;
@@ -92,8 +92,27 @@ export class Monster {
     const dist = Math.hypot(dx, dy) || 1;
     this.facing = Math.atan2(dy, dx);
 
-    // Boss occasionally telegraph ranged
-    if (this.isBoss && Math.random() < 0.35 * dt && dist > 120 && dist < 520) {
+    // Limited sight — do not aggro from across the whole map
+    const sight =
+      this.isBoss ? 240 :
+      this.def.tier === 'L3' ? 175 :
+      this.def.tier === 'L2' ? 155 :
+      140;
+    const loseAggro = sight * 1.35;
+    const wasChasing = this.state === 'chase' || this.state === 'telegraph';
+    const inSight = dist <= sight || (wasChasing && dist <= loseAggro);
+
+    if (!inSight) {
+      this.state = 'idle';
+      // light idle drift so they aren't statues
+      this.x += Math.cos(this.animT * 0.7 + this.radius) * 12 * dt;
+      this.y += Math.sin(this.animT * 0.9 + this.radius) * 12 * dt;
+      resolveWalls(this, this.radius, walls);
+      return null;
+    }
+
+    // Boss occasionally telegraph ranged (only while aware)
+    if (this.isBoss && Math.random() < 0.35 * dt && dist > 120 && dist < sight + 40) {
       this.state = 'telegraph';
       this.telegraph = 1.0;
       this.telegraphAngle = this.facing;

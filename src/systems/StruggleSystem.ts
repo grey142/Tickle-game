@@ -28,10 +28,15 @@ export class StruggleSystem {
     this.active = false;
     this.struggle = 0;
     this.tickling = false;
+    this.mashCooldown = 0;
     for (const g of this.grabbers) {
-      if (!g.dead && (g.state === 'grabbing' || g.state === 'tickling')) {
-        g.state = 'hitstun';
-        g.hitstun = 0.4;
+      if (!g.dead) {
+        if (g.state === 'grabbing' || g.state === 'tickling') {
+          g.state = 'hitstun';
+          g.hitstun = Math.max(g.hitstun, 0.55);
+        }
+        g.grabTimer = 0;
+        g.tickleTime = 0;
       }
     }
     this.grabbers = [];
@@ -88,24 +93,27 @@ export class StruggleSystem {
       this.mashCooldown = cheats.instantStruggle ? 0.01 : 0.09;
     }
 
-    // passive decay so you must mash
-    this.struggle = Math.max(0, this.struggle - (8 + hardness * 10) * dt);
-
-    if (this.struggle >= 100 || cheats.instantStruggle && input.strugglePressed) {
-      // escape
+    // Escape must be checked BEFORE passive decay, or filling to 100 never sticks.
+    if (this.struggle >= 100 || (cheats.instantStruggle && input.strugglePressed)) {
       const angle = Math.atan2(player.y - primary.y, player.x - primary.x) || Math.random() * Math.PI * 2;
       player.applyKnockback(angle, 280);
       player.immunity = IMMUNITY_AFTER_ESCAPE;
       for (const g of this.grabbers) {
         g.state = 'hitstun';
-        g.hitstun = 0.55;
-        g.x -= Math.cos(angle) * 40;
-        g.y -= Math.sin(angle) * 40;
+        g.hitstun = 0.7;
+        g.grabTimer = 0;
+        g.tickleTime = 0;
+        g.x -= Math.cos(angle) * 55;
+        g.y -= Math.sin(angle) * 55;
       }
       this.clear(player);
       player.anim = 'idle';
+      player.grabbed = false;
       return 'escaped';
     }
+
+    // passive decay so you must mash (only while still grabbed)
+    this.struggle = Math.max(0, this.struggle - (8 + hardness * 10) * dt);
 
     if (player.resolve <= 0) {
       player.resolve = 0;
