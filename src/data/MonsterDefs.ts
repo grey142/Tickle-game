@@ -90,11 +90,11 @@ export const MONSTER_DEFS: Record<MonsterKind, MonsterDef> = {
     grabDelay: 2.0,
     drainRates: [45, 90, 180],
     drainStages: [3, 7, 9999], // 3s @15, then 7s @30 (total 10s), then 60/s
-    gangMax: 1,
-    gangDrainMult: [1],
+    gangMax: 3,
+    gangDrainMult: [1, 2, 3],
     struggleHardness: 0.7,
     knockbackOnHit: 25,
-    description: 'Slow solo hunter. Escalating tickle after 2s delay.',
+    description: 'Smoky gang tickler. Escalating drain after 2s delay.',
   },
   root_trapper: {
     id: 'root_trapper',
