@@ -36,7 +36,7 @@ export const TICKLE_SCENE_MAX: Record<MonsterKind, number> = {
   chuckle_brute: 3,
   snicker_shade: 3,
   root_trapper: 2,
-  hand_tickler: 1,
+  hand_tickler: 3,
   boss_titania: 1,
   boss_guffaw: 1,
   boss_merriwink: 1,
