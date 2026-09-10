@@ -178,7 +178,7 @@ export class Monster {
 
     if (sprite) {
       const flipX = Math.cos(this.facing) < 0;
-      drawSpriteCentered(ctx, sprite, 0, 0, this.radius * 7.2, flipX);
+      drawSpriteCentered(ctx, sprite, 0, 0, this.radius * 19.2, flipX);
     } else {
       ctx.rotate(this.facing * 0.15);
       drawShape(ctx, shape, this.radius, color, accent, this.animT, this.state);

@@ -635,7 +635,7 @@ export class Game {
     const frame = getHeroFrame(p.anim);
     if (frame) {
       const flip = Math.cos(p.facing) < 0;
-      drawSpriteCentered(ctx, frame, 0, -4, p.radius * 10.8, flip);
+      drawSpriteCentered(ctx, frame, 0, -4, p.radius * 28.8, flip);
     } else {
       ctx.fillStyle = '#6a5a9a';
       ctx.beginPath(); ctx.arc(0, 0, p.radius, 0, Math.PI * 2); ctx.fill();

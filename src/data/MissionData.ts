@@ -1,6 +1,28 @@
 import type { LevelDef, MonsterKind } from '../game/types';
 import { bossHpForMission } from './MonsterDefs';
 
+/** Triple regular spawns (offsets clones). Bosses stay one copy. */
+function densifyEnemies(
+  enemies: LevelDef['enemies'],
+  mult = 3,
+): LevelDef['enemies'] {
+  const out: LevelDef['enemies'] = [];
+  for (const e of enemies) {
+    const copies = e.kind.startsWith('boss_') ? 1 : mult;
+    for (let i = 0; i < copies; i++) {
+      const ang = (i / Math.max(copies, 1)) * Math.PI * 2 + (e.x + e.y) * 0.01;
+      const r = i === 0 ? 0 : 36 + i * 22;
+      out.push({
+        kind: e.kind,
+        x: Math.round(e.x + Math.cos(ang) * r),
+        y: Math.round(e.y + Math.sin(ang) * r),
+      });
+    }
+  }
+  return out;
+}
+
+
 const M1_WALLS = [
   { x: 0, y: 0, w: 1400, h: 40 },
   { x: 0, y: 760, w: 1400, h: 40 },
@@ -211,7 +233,8 @@ for (let m = 1; m <= 10; m++) {
 }
 
 export function getLevel(mission: number, level: number): LevelDef {
-  return ALL_LEVELS[mission - 1][level - 1];
+  const base = ALL_LEVELS[mission - 1][level - 1];
+  return { ...base, enemies: densifyEnemies(base.enemies, 3) };
 }
 
 export const MISSION_TITLES = [
