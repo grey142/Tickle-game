@@ -89,8 +89,9 @@ function loadImage(src: string, timeoutMs = SPRITE_LOAD_TIMEOUT_MS): Promise<HTM
 }
 
 /**
- * Chroma-key: sample the corner pixel (and known lavender) and zero alpha for
- * near-matching pixels. Returns an offscreen canvas with transparency.
+ * Chroma-key lavender (and optional near-black backdrops) to transparency.
+ * Never treat an arbitrary corner color as the key — a black corner used to
+ * punch holes through dark clothing, hair, and shadows.
  */
 export function chromaKeyToCanvas(
   source: CanvasImageSource,
@@ -106,21 +107,34 @@ export function chromaKeyToCanvas(
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const px = imageData.data;
 
-  // Corner sample (primary key)
-  const kr = px[0];
-  const kg = px[1];
-  const kb = px[2];
   const lav = SPRITE_KEY_LAVENDER;
-  // Per-channel tolerance; Manhattan threshold scales with 3 channels
-  const maxDist = tolerance * 3;
+  const maxLavDist = tolerance * 3;
+
+  // Sample a few border pixels to decide if the plate is a black backdrop.
+  const samples: number[] = [0];
+  if (canvas.width > 1) samples.push((canvas.width - 1) * 4);
+  if (canvas.height > 1) samples.push((canvas.height - 1) * canvas.width * 4);
+  if (canvas.width > 1 && canvas.height > 1) {
+    samples.push(((canvas.height - 1) * canvas.width + (canvas.width - 1)) * 4);
+  }
+  let blackish = 0;
+  for (const i of samples) {
+    if (Math.max(px[i], px[i + 1], px[i + 2]) <= 28) blackish++;
+  }
+  // Tight pure-black key only when corners look like a black plate (JPG noise).
+  const keyBlack = blackish >= 2;
+  const blackMax = 18; // max(r,g,b) — keeps dark leather/hair intact
 
   for (let i = 0; i < px.length; i += 4) {
     const r = px[i];
     const g = px[i + 1];
     const b = px[i + 2];
-    const dCorner = Math.abs(r - kr) + Math.abs(g - kg) + Math.abs(b - kb);
     const dLav = Math.abs(r - lav.r) + Math.abs(g - lav.g) + Math.abs(b - lav.b);
-    if (dCorner <= maxDist || dLav <= maxDist) {
+    if (dLav <= maxLavDist) {
+      px[i + 3] = 0;
+      continue;
+    }
+    if (keyBlack && Math.max(r, g, b) <= blackMax) {
       px[i + 3] = 0;
     }
   }
