@@ -89,54 +89,85 @@ function loadImage(src: string, timeoutMs = SPRITE_LOAD_TIMEOUT_MS): Promise<HTM
 }
 
 /**
- * Chroma-key lavender (and optional near-black backdrops) to transparency.
- * Never treat an arbitrary corner color as the key — a black corner used to
- * punch holes through dark clothing, hair, and shadows.
+ * Chroma-key backdrop to transparency via flood-fill from the image edges.
+ * Only backdrop-connected lavender (or near-black plate) pixels are removed —
+ * never punch holes through interior dark clothing, hair, shadows, or art.
  */
 export function chromaKeyToCanvas(
   source: CanvasImageSource,
   srcW: number,
   srcH: number,
-  tolerance = 38,
+  tolerance = 32,
 ): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, srcW);
-  canvas.height = Math.max(1, srcH);
+  const w = Math.max(1, srcW);
+  const h = Math.max(1, srcH);
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
   ctx.drawImage(source, 0, 0);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, w, h);
   const px = imageData.data;
 
   const lav = SPRITE_KEY_LAVENDER;
   const maxLavDist = tolerance * 3;
 
-  // Sample a few border pixels to decide if the plate is a black backdrop.
-  const samples: number[] = [0];
-  if (canvas.width > 1) samples.push((canvas.width - 1) * 4);
-  if (canvas.height > 1) samples.push((canvas.height - 1) * canvas.width * 4);
-  if (canvas.width > 1 && canvas.height > 1) {
-    samples.push(((canvas.height - 1) * canvas.width + (canvas.width - 1)) * 4);
-  }
+  // Detect black plate from border samples (legacy imp/black-bg art).
+  const cornerIdx = [
+    0,
+    (w - 1) * 4,
+    (h - 1) * w * 4,
+    ((h - 1) * w + (w - 1)) * 4,
+  ];
   let blackish = 0;
-  for (const i of samples) {
+  for (const i of cornerIdx) {
     if (Math.max(px[i], px[i + 1], px[i + 2]) <= 28) blackish++;
   }
-  // Tight pure-black key only when corners look like a black plate (JPG noise).
   const keyBlack = blackish >= 2;
-  const blackMax = 18; // max(r,g,b) — keeps dark leather/hair intact
+  const blackMax = 22;
 
-  for (let i = 0; i < px.length; i += 4) {
+  const isBackdrop = (i: number): boolean => {
     const r = px[i];
     const g = px[i + 1];
     const b = px[i + 2];
     const dLav = Math.abs(r - lav.r) + Math.abs(g - lav.g) + Math.abs(b - lav.b);
-    if (dLav <= maxLavDist) {
-      px[i + 3] = 0;
-      continue;
-    }
-    if (keyBlack && Math.max(r, g, b) <= blackMax) {
-      px[i + 3] = 0;
-    }
+    if (dLav <= maxLavDist) return true;
+    if (keyBlack && Math.max(r, g, b) <= blackMax) return true;
+    return false;
+  };
+
+  const visited = new Uint8Array(w * h);
+  const stack: number[] = [];
+
+  const tryPush = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return;
+    const p = y * w + x;
+    if (visited[p]) return;
+    const i = p * 4;
+    if (!isBackdrop(i)) return;
+    visited[p] = 1;
+    stack.push(p);
+  };
+
+  // Seed from full border so enclosed holes in the art stay opaque.
+  for (let x = 0; x < w; x++) {
+    tryPush(x, 0);
+    tryPush(x, h - 1);
+  }
+  for (let y = 0; y < h; y++) {
+    tryPush(0, y);
+    tryPush(w - 1, y);
+  }
+
+  while (stack.length) {
+    const p = stack.pop()!;
+    const x = p % w;
+    const y = (p / w) | 0;
+    px[p * 4 + 3] = 0;
+    tryPush(x + 1, y);
+    tryPush(x - 1, y);
+    tryPush(x, y + 1);
+    tryPush(x, y - 1);
   }
 
   ctx.putImageData(imageData, 0, 0);
