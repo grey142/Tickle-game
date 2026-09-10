@@ -67,6 +67,15 @@ export function heroFrameIndex(state: CharAnimState): number {
 
 const SPRITE_LOAD_TIMEOUT_MS = 8000;
 
+/** Copy an image to a canvas with no chroma processing. */
+function imageToCanvas(img: HTMLImageElement): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, img.naturalWidth || img.width);
+  c.height = Math.max(1, img.naturalHeight || img.height);
+  c.getContext('2d')!.drawImage(img, 0, 0);
+  return c;
+}
+
 function loadImage(src: string, timeoutMs = SPRITE_LOAD_TIMEOUT_MS): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -240,8 +249,8 @@ export const sprites: SpriteBank = {
 let loadPromise: Promise<SpriteBank> | null = null;
 
 /**
- * Load all placeholder sprites, chroma-key lavender backgrounds, slice hero
- * sheet into 6 frames. Safe to call multiple times (returns same promise).
+ * Load sprites (no chroma on hero/enemies/scenes — keeps authored art intact),
+ * slice hero sheet into 6 frames. Safe to call multiple times (returns same promise).
  */
 export function loadSprites(): Promise<SpriteBank> {
   if (loadPromise) return loadPromise;
@@ -249,25 +258,17 @@ export function loadSprites(): Promise<SpriteBank> {
     const overall = (async () => {
       try {
         const heroImg = await loadImage(heroSheetUrl());
-        const keyedHero = chromaKeyToCanvas(
-          heroImg,
-          heroImg.naturalWidth || heroImg.width,
-          heroImg.naturalHeight || heroImg.height,
-        );
+        // No runtime chroma — same as tickle scenes (keying punched holes in art).
+        const heroCanvas = imageToCanvas(heroImg);
         sprites.heroFrames = [];
         for (let i = 0; i < HERO_FRAME_COUNT; i++) {
-          sprites.heroFrames.push(trimTransparent(sliceFrame(keyedHero, i, HERO_FRAME_COUNT)));
+          sprites.heroFrames.push(sliceFrame(heroCanvas, i, HERO_FRAME_COUNT));
         }
 
         const enemyResults = await Promise.allSettled(
           MONSTER_KINDS.map(async (kind) => {
             const img = await loadImage(enemySpriteUrl(kind));
-            const keyed = trimTransparent(chromaKeyToCanvas(
-              img,
-              img.naturalWidth || img.width,
-              img.naturalHeight || img.height,
-            ));
-            return { kind, keyed };
+            return { kind, keyed: imageToCanvas(img) };
           }),
         );
         for (const result of enemyResults) {

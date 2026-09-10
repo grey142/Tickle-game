@@ -188,7 +188,7 @@ export class CharacterPanel {
 
     const frame = getHeroFrame(state);
     if (frame) {
-      const targetH = Math.min(panelH * 0.78, 220);
+      const targetH = Math.min(panelH * 0.92, 660);
       drawSpriteCentered(ctx, frame, 0, -8, targetH, false);
       if (state === 'tickled') {
         for (let i = 0; i < 6; i++) {
@@ -295,7 +295,7 @@ export class CharacterPanel {
     ctx.translate(x, y);
     ctx.globalAlpha = 0.9;
     if (sprite) {
-      drawSpriteCentered(ctx, sprite, 0, 0, 56, false);
+      drawSpriteCentered(ctx, sprite, 0, 0, 168, false);
     } else {
       ctx.fillStyle = def.color;
       ctx.beginPath();
@@ -320,7 +320,7 @@ export class CharacterPanel {
     ctx.save();
     ctx.translate(x, y + Math.sin(this.t * 3) * 4);
     if (sprite) {
-      drawSpriteCentered(ctx, sprite, 0, 0, 96, false);
+      drawSpriteCentered(ctx, sprite, 0, 0, 288, false);
     } else {
       ctx.fillStyle = def.color;
       ctx.strokeStyle = def.accent;
