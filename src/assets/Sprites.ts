@@ -289,14 +289,15 @@ export function loadSprites(): Promise<SpriteBank> {
               (async () => {
                 try {
                   const img = await loadImage(tickleSceneUrl(kind, sceneN));
-                  const keyed = trimTransparent(
-                    chromaKeyToCanvas(
-                      img,
-                      img.naturalWidth || img.width,
-                      img.naturalHeight || img.height,
-                    ),
-                  );
-                  slots[sceneN] = keyed;
+                  // Keep authored plate (lavender/black). Runtime chroma was
+                  // punching holes through soft gradients and dark clothing.
+                  const w = img.naturalWidth || img.width;
+                  const h = img.naturalHeight || img.height;
+                  const c = document.createElement('canvas');
+                  c.width = Math.max(1, w);
+                  c.height = Math.max(1, h);
+                  c.getContext('2d')!.drawImage(img, 0, 0);
+                  slots[sceneN] = c;
                 } catch (err) {
                   console.warn(`Tickle scene skipped: ${kind}_${sceneN}`, err);
                 }
